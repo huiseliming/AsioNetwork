@@ -11,13 +11,22 @@ class IClient
 {
 public:
 
+	IClient()
+	{
+
+	}
+
+	virtual ~IClient() 
+	{
+		Disconnect();
+	}
+
 	bool ConnectToServer(const std::string host, const uint16_t port) 
 	{
 		try
 		{
-			m_connection = std::make_unique<MessageType>();
-
-			asio::ip::tcp::resolver resolver(m_context);
+			m_connection = std::make_unique<Connection<MessageType>>(Connection<MessageType>::Owner::kClient, m_ioContext, std::move(m_socket), m_messageIn);
+			asio::ip::tcp::resolver resolver(m_ioContext);
 			auto endpoints = resolver.resolve(host,std::to_string(port));
 			m_connection->ConnectToServer(endpoints);
 			m_thread = std::move(std::thread([this] { m_ioContext.run(); }));
@@ -33,9 +42,7 @@ public:
 	void Disconnect() 
 	{
 		if (IsConnected())
-			return m_connection->IsConnected();
-		else
-			return false;
+			m_connection->DisConnect();
 	}
 
 	void IsConnected() 

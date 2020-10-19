@@ -54,5 +54,12 @@ TEST(AsioNetworkTest,MessageIOStreamTest)
 
 TEST(AsioNetworkTest, ConnectTest)
 {
-	
+	IServer<MessageType> server(53330);	
+	//IClient<MessageType> client;
+	server.Start(); 
+	//client.ConnectToServer("127.0.0.1", 53330);
+	while (true)
+	{
+		server.Update();
+	}
 }

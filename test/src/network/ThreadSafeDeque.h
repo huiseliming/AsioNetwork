@@ -51,13 +51,13 @@ public:
         return m_deque.emplace_back(std::forward<T>(item));
     }
 
-    void empty()
+    bool empty()
     {
         std::scoped_lock<std::mutex> lock(m_mutex);
         return m_deque.empty();
     }
 
-    void size()
+    size_t size()
     {
         std::scoped_lock<std::mutex> lock(m_mutex);
         return m_deque.size();

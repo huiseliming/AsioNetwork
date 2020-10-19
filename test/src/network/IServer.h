@@ -7,8 +7,8 @@ template<typename MessageType>
 class IServer
 {
 public:
-	IServer()
-		: m_acceptor(m_ioContext)
+	IServer(uint16_t port)
+		: m_acceptor(m_ioContext,asio::ip::tcp::endpoint(asio::ip::tcp::v4(),port))
 	{
 	
 	}
@@ -22,6 +22,7 @@ public:
 	{
 		try
 		{
+			std::cout << "[Server] Start!" << std::endl;
 			WaitForClientConnection();
 		}
 		catch (const std::exception& e)
@@ -51,7 +52,7 @@ public:
 					auto remote_endpoint = socket.remote_endpoint();
 					std::cout << "[Server] New Connection: " << remote_endpoint << std::endl;
 					std::shared_ptr<Connection<MessageType>> newConnection =
-						std::make_shared<Connection<MessageType>>(Connection<MessageType>::Owner::kServer, m_ioContext,std::move(socket), m_messageIn);
+						std::make_shared<Connection<MessageType>>(Connection<MessageType>::Owner::kServer, m_ioContext, std::move(socket), m_messageIn);
 					if (OnClientConnect(newConnection))
 					{
 						m_connections.push_back(std::move(newConnection));
@@ -111,9 +112,9 @@ public:
 	void Update(size_t maxMessages = -1)
 	{
 		size_t messageCount = 0;
-		while (messageCount < maxMessages && !m_messageIn.Empty())
+		while (messageCount < maxMessages && !m_messageIn.empty())
 		{
-			auto msg = m_messageIn.PopFront();
+			auto msg = m_messageIn.pop_front();
 			OnMessage(msg.remote, msg.msg);
 			messageCount++;
 		}
@@ -122,7 +123,7 @@ public:
 protected:
 	virtual bool OnClientConnect(std::shared_ptr<Connection<MessageType>> client) 
 	{
-		return false;
+		return true;
 	}
 
 	virtual void OnClientDisconnect(std::shared_ptr<Connection<MessageType>> client)
