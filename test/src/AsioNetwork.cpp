@@ -2,9 +2,11 @@
 #include "AsioNetwork.h"
 #include <GLFW/glfw3.h>
 
+
 void AsioNetwork::StartUp()
 {
 	MAIN_WINDOW().Create();
+
 }
 
 void AsioNetwork::MainLoop()
@@ -22,7 +24,7 @@ void AsioNetwork::Cleanup()
 
 
 
-
+//APPLICATION_IMPL(AsioNetwork)
 
 
 

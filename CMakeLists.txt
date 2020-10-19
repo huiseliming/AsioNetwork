@@ -3,7 +3,6 @@
 set(This asio_network)
 project(${This})
 message(STATUS "compiler: " ${CMAKE_CXX_COMPILER_ID})
-find_package(GTest CONFIG REQUIRED)
 find_package(glfw3 REQUIRED)
 
 enable_testing()
