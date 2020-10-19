@@ -2,9 +2,6 @@
 #include "Application.h"
 #include <vector>
 #include <thread>
-#include "network/Server.h"
-#include "network/Client.h"
-
 
 class AsioNetwork : public Application
 {

@@ -1,7 +1,9 @@
 #include "AsioNetwork.h"
 #include <iostream>
+#include <gtest/gtest.h>
 #include "network/Message.h"
-#include "gtest/gtest.h"
+#include "network/IClient.h"
+#include "network/IServer.h"
 
 
 enum class MessageType: uint32_t{
@@ -18,7 +20,7 @@ TEST(AsioNetworkTest,MessageIOStreamTest)
 	bool b = true;
 	float c = 3.1414926f;
 
-	struct {
+	struct XXX{
 		float x;
 		float y;
 	} d[5];
@@ -46,4 +48,11 @@ TEST(AsioNetworkTest,MessageIOStreamTest)
 		ASSERT_EQ(d[i].y, 1);
 	}
 
+}
+
+
+
+TEST(AsioNetworkTest, ConnectTest)
+{
+	
 }
