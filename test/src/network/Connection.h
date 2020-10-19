@@ -11,22 +11,39 @@ public:
     enum class Owner {
         kServer,
         kClient
-    }m_owner;
+    }m_owner = kServer;
 public:
     Connection(Owner owner, asio::io_context& asioContext, asio::ip::tcp::socket socket, ThreadSafeDeque<Message<MessageType>>& messageIn)
         : m_owner(owner)
         , m_asioContext(asioContext)
         , m_writeStand(asioContext)
         , m_socket(std::move(socket))
-        , m_messageIn(messageIn);
+        , m_messageIn(messageIn)
     {}
     virtual ~Connection()
     {}
 
-    bool ConnectToServer();
-    bool ConnectToClient();
-    bool DisConnect();
-    bool IsConnected() const ;
+    bool ConnectToServer()
+    {
+    
+    }
+
+    bool ConnectToClient()
+    { 
+        assert(m_owner == Owner::kServer);
+        if (m_socket.is_open()) 
+        {
+            id = uid;
+        }
+    }
+    bool DisConnect() 
+    {
+    
+    }
+
+
+    bool IsConnected() const { return m_socket.is_open(); }
+    bool GetID() { return m_id; }
 
     bool Send(Message<MessageType>& msg) 
     {
@@ -40,7 +57,7 @@ protected:
 private:
     std::deque<Message<MessageType>> m_messageOut;
     ThreadSafeDeque<Message<MessageType>>& m_messageIn;
-
+    uint32_t m_id = 0;
 };
 
 

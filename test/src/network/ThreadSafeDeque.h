@@ -15,60 +15,61 @@ public:
     ThreadSafeDeque& operator=(const ThreadSafeDeque&) = delete;
     virtual ~ThreadSafeDeque() { m_deque.clear(); }
 
-    const T& Front()
+    const T& front()
     {
         std::scoped_lock<std::mutex> lock(m_mutex);
         return m_deque.front();
     }
-    const T& Back()
+
+    const T& back()
     {
         std::scoped_lock<std::mutex> lock(m_mutex);
         return m_deque.back();
     }
 
-    void PushFront(const T& item)
+    void push_front(const T& item)
     {
         std::scoped_lock<std::mutex> lock(m_mutex);
         return m_deque.push_front(item);
     }
 
-    void PushBack(const T& item)
+    void push_back(const T& item)
     {
         std::scoped_lock<std::mutex> lock(m_mutex);
         return m_deque.push_back(item);
     }
 
-    void EmplaceFront(T&& item)
+    void emplace_front(T&& item)
     {
         std::scoped_lock<std::mutex> lock(m_mutex);
         return m_deque.emplace_front(std::forward<T>(item));
     }
 
-    void EmplaceBack(T&& item)
+    void emplace_back(T&& item)
     {
         std::scoped_lock<std::mutex> lock(m_mutex);
         return m_deque.emplace_back(std::forward<T>(item));
     }
 
-    void Empty()
+    void empty()
     {
         std::scoped_lock<std::mutex> lock(m_mutex);
         return m_deque.empty();
     }
 
-    void Size()
+    void size()
     {
         std::scoped_lock<std::mutex> lock(m_mutex);
         return m_deque.size();
     }
 
-    void Clear()
+    void clear()
     {
         std::scoped_lock<std::mutex> lock(m_mutex);
         return m_deque.clear();
     }
 
-    T PopFront()
+    T pop_front()
     {
         std::scoped_lock<std::mutex> lock(m_mutex);
         auto front = std::move(m_deque.front());
@@ -76,7 +77,7 @@ public:
         return front;
     }
 
-    T PopBack()
+    T pop_back()
     {
         std::scoped_lock<std::mutex> lock(m_mutex);
         auto back = std::move(m_deque.back());

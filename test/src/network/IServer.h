@@ -108,12 +108,30 @@ public:
 		}
 	}
 
+	void Update(size_t maxMessages = -1)
+	{
+		size_t messageCount = 0;
+		while (messageCount < maxMessages && !m_messageIn.Empty())
+		{
+			auto msg = m_messageIn.PopFront();
+			OnMessage(msg.remote, msg.msg);
+			messageCount++;
+		}
+	}
+
 protected:
-	virtual bool OnClientConnect(std::shared_ptr<Connection<MessageType>> client);
+	virtual bool OnClientConnect(std::shared_ptr<Connection<MessageType>> client) 
+	{
+		return false;
+	}
 
-	virtual void OnClientDisconnect(std::shared_ptr<Connection<MessageType>> client);
+	virtual void OnClientDisconnect(std::shared_ptr<Connection<MessageType>> client)
+	{
+	}
 
-	virtual void OnMessage(Message<MessageType> msg, std::shared_ptr<Connection<MessageType>> client);
+	virtual void OnMessage(std::shared_ptr<Connection<MessageType>> client, Message<MessageType> msg)
+	{
+	}
 
 	TSQueue<OwnerMessage<MessageType>> m_messageIn;
 	std::deque<std::shared_ptr<Connection<MessageType>>> m_connections;
