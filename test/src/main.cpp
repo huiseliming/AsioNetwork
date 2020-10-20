@@ -6,7 +6,7 @@
 #include "network/IServer.h"
 
 
-enum class MessageType: uint32_t{
+enum class CustomMessageType: uint32_t{
 	kMessageTypeNoData,
 	kMessageTypeHeartbeat,
 	kMessageTypeMaxCount
@@ -14,7 +14,7 @@ enum class MessageType: uint32_t{
 
 TEST(AsioNetworkTest,MessageIOStreamTest)
 {
-	Message<MessageType> message;
+	Message<CustomMessageType> message;
 
 	int a = 1;
 	bool b = true;
@@ -54,10 +54,10 @@ TEST(AsioNetworkTest,MessageIOStreamTest)
 
 TEST(AsioNetworkTest, ConnectTest)
 {
-	IServer<MessageType> server(53330);	
-	//IClient<MessageType> client;
+	IServer<CustomMessageType> server(53330);
+	IClient<CustomMessageType> client;
 	server.Start(); 
-	//client.ConnectToServer("127.0.0.1", 53330);
+	client.Connect("127.0.0.1", 53330);
 	while (true)
 	{
 		server.Update();

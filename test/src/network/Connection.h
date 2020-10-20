@@ -15,17 +15,30 @@ public:
 public:
     Connection(Owner owner, asio::io_context& asioContext, asio::ip::tcp::socket socket, ThreadSafeDeque<OwnerMessage<MessageType>>& messageIn)
         : m_owner(owner)
-        , m_asioContext(asioContext)
+        , m_ioContext(asioContext)
         , m_writeStand(asioContext)
         , m_socket(std::move(socket))
         , m_messageIn(messageIn)
     {}
-    virtual ~Connection()
-    {}
 
-    bool ConnectToServer()
+    virtual ~Connection()
     {
-    
+
+    }
+
+    bool ConnectToServer(const asio::ip::tcp::resolver::results_type& endpoints)
+    {
+        assert(m_owner == Owner::kClient);
+
+        asio::async_connect(m_socket, endpoints, 
+            [this](std::error_code ec, asio::ip::tcp::endpoint endpoint)
+            {
+                if (!ec) 
+                {
+                    ReadHeader();
+                }
+            });
+        return true;
     }
 
     bool ConnectToClient(uint32_t id)
@@ -39,17 +52,29 @@ public:
         }
         return false;
     }
-    bool DisConnect() 
+
+    void DisConnect() 
     {
-    
+        if (IsConnected())
+        {
+            asio::post(m_ioContext, [this]() { m_socket.close(); });
+        }
     }
 
-
     bool IsConnected() const { return m_socket.is_open(); }
+    
     bool GetID() { return m_id; }
 
-    bool Send(Message<MessageType>& msg) 
+    bool Send(Message<MessageType>&& msg) 
     {
+        m_writeStand.post(
+            [this, msg = std::forward<Message<MessageType>>(msg)] {
+                m_messageOut.push_back(msg);
+                if (m_messageOut.size() <= 1)
+                {
+                    WriteHeader();
+                }
+            });
     }
 
 private:
@@ -100,7 +125,7 @@ private:
     void WriteHeader()
     {
         asio::async_write(m_socket, asio::buffer(&m_messageOut.front().header, sizeof(MessageHeader<MessageType>)),
-            [this](std::error_code ec, std::size_t length)
+            m_writeStand.wrap([this](std::error_code ec, std::size_t length)
             {
                 if (!ec)
                 {
@@ -122,13 +147,13 @@ private:
                     std::cout << "[Server] WriteHeader Failed!" << std::endl;
                     m_socket.close();
                 }
-            });
+            }));
     }
 
     void WriteBody()
     {
         asio::async_write(m_socket, asio::buffer(m_messageOut.front().body.data(), m_messageOut.front().body.size()),
-            [this](std::error_code ec, std::size_t length)
+            m_writeStand.wrap([this](std::error_code ec, std::size_t length)
             {
                 if (!ec)
                 {
@@ -143,7 +168,7 @@ private:
                     std::cout << "[Server] WriteBody Failed!" << std::endl;
                     m_socket.close();
                 }
-            });
+            }));
     }
 
     void AddToIncomingMessageQueue()
@@ -155,7 +180,7 @@ private:
     }
 
 protected:
-    asio::io_context& m_asioContext;
+    asio::io_context& m_ioContext;
     asio::io_context::strand m_writeStand;
     asio::ip::tcp::socket m_socket;
     

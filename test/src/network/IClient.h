@@ -13,21 +13,19 @@ public:
 
 	IClient()
 	{
-
 	}
 
 	virtual ~IClient() 
 	{
-		Disconnect();
 	}
 
-	bool ConnectToServer(const std::string host, const uint16_t port) 
+	bool Connect(const std::string host, const uint16_t port) 
 	{
 		try
 		{
-			m_connection = std::make_unique<Connection<MessageType>>(Connection<MessageType>::Owner::kClient, m_ioContext, std::move(m_socket), m_messageIn);
 			asio::ip::tcp::resolver resolver(m_ioContext);
 			auto endpoints = resolver.resolve(host,std::to_string(port));
+			m_connection = std::make_unique<Connection<MessageType>>(Connection<MessageType>::Owner::kClient, m_ioContext, asio::ip::tcp::socket(m_ioContext), m_messageIn);
 			m_connection->ConnectToServer(endpoints);
 			m_thread = std::move(std::thread([this] { m_ioContext.run(); }));
 		}
@@ -53,11 +51,12 @@ public:
 			return false;
 	}
 
+	void Send(Message<MessageType>&& msg) { if(m_connection->IsConnected()) m_connection->Send(std::forward<Message<MessageType>>(msg)) }
+
 protected:
 	asio::io_context m_ioContext;
 	std::thread m_thread;
 
-	asio::ip::tcp::socket m_socket;
 	std::unique_ptr<Connection<MessageType>> m_connection;
 
 private:

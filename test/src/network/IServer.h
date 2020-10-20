@@ -9,6 +9,7 @@ class IServer
 public:
 	IServer(uint16_t port)
 		: m_acceptor(m_ioContext,asio::ip::tcp::endpoint(asio::ip::tcp::v4(),port))
+		, m_connectionsStrand(m_ioContext)
 	{
 	
 	}
@@ -24,6 +25,10 @@ public:
 		{
 			std::cout << "[Server] Start!" << std::endl;
 			WaitForClientConnection();
+			for (size_t i = 0; i < std::thread::hardware_concurrency(); i++)
+			{
+				m_threads.push_back(std::move(std::thread([this] { m_ioContext.run(); })));
+			}
 		}
 		catch (const std::exception& e)
 		{
@@ -36,9 +41,9 @@ public:
 	void Stop() 
 	{
 		m_ioContext.stop();
-
-		if (m_thread.joinable())
-			m_thread.join();
+		for (size_t i = 0; i < m_threads.size(); i++)
+			if (m_threads[i].joinable())
+				m_threads[i].join();
 		std::cout << "[Server] Stopped!" << std::endl;
 	}
 
@@ -55,9 +60,14 @@ public:
 						std::make_shared<Connection<MessageType>>(Connection<MessageType>::Owner::kServer, m_ioContext, std::move(socket), m_messageIn);
 					if (OnClientConnect(newConnection))
 					{
-						m_connections.push_back(std::move(newConnection));
-						m_connections.back()->ConnectToClient(m_idCounter++);
-						std::cout << "[Server] " << remote_endpoint <<" [ID:"<<m_connections.back()->GetID() << "] Connection Approved" << std::endl;
+						m_connectionsStrand.post(
+							[this, newConnection]
+							{
+								m_connections.push_back(std::move(newConnection));
+								m_connections.back()->ConnectToClient(m_idCounter++);
+								std::cout << "[Server] " << "[ID:" << m_connections.back()->GetID() << "] Connection Approved" << std::endl;
+							}
+						);
 					}
 					else
 					{
@@ -74,39 +84,45 @@ public:
 
 	void MessageClient(std::shared_ptr<Connection<MessageType>> client ,Message<MessageType> msg)
 	{
-		if (client && client->IsConnected())
-		{
-			Client->Send(msg);
-		}
-		else
-		{
-			OnClientDisconnect(client);
-			client.reset();
-			m_connections.erase(std::remove(std::begin(m_connections),std::end(m_connections),client),std::end(m_connections));
-		}
+		m_connectionsStrand.post(
+			[this] {
+				if (client && client->IsConnected())
+				{
+					client->Send(msg);
+				}
+				else
+				{
+					OnClientDisconnect(client);
+					client.reset();
+					m_connections.erase(std::remove(std::begin(m_connections), std::end(m_connections), client), std::end(m_connections));
+				}
+			});
 	}
 
 	void MessageAllClients(Message<MessageType> msg, std::shared_ptr<Connection<MessageType>> pIgnoreClient = nullptr)
 	{
-		bool bInvalidClientExists;
-		for (auto& client, m_connections) 
-		{
-			if (client && client->IsConnected())
-			{
-				if (client != pIgnoreClient);
-					client->Send(msg);
-			}
-			else
-			{
-				OnClientDisconnect();
-				client.reset();
-				bInvalidClientExists = true;
-			}
-		}
-		if (bInvalidClientExists)
-		{
-			m_connections.erase(std::remove(std::begin(m_connections), std::end(m_connections), nullptr), std::end(m_connections));
-		}
+		m_connectionsStrand.post(
+			[this] {
+				bool bInvalidClientExists = false;
+				for (auto& client, m_cconnections)
+				{
+					if (client && client->IsConnected())
+					{
+						if (client != pIgnoreClient);
+						client->Send(msg);
+					}
+					else
+					{
+						OnClientDisconnect();
+						client.reset();
+						bInvalidClientExists = true;
+					}
+				}
+				if (bInvalidClientExists)
+				{
+					m_connections.erase(std::remove(std::begin(m_connections), std::end(m_connections), nullptr), std::end(m_connections));
+				}
+			});
 	}
 
 	void Update(size_t maxMessages = -1)
@@ -137,10 +153,12 @@ protected:
 	TSQueue<OwnerMessage<MessageType>> m_messageIn;
 	std::deque<std::shared_ptr<Connection<MessageType>>> m_connections;
 	asio::io_context m_ioContext;
-	std::thread m_thread;
+	asio::io_context::strand m_connectionsStrand;
+	std::vector<std::thread> m_threads;
 
 	asio::ip::tcp::acceptor m_acceptor;
-	uint32_t m_idCounter = 0;
+	uint32_t m_idCounter = 1;
+
 };
 
 
