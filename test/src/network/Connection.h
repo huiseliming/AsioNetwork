@@ -4,38 +4,43 @@
 #include "Message.h"
 #include "ThreadSafeDeque.h"
 
-template<typename MessageType>
-class Connection :public std::enable_shared_from_this<Connection<MessageType>>
+template<typename T>
+class Connection :public std::enable_shared_from_this<Connection<T>>
 {
 public:
     enum class Owner {
-        kServer,
-        kClient
-    }m_owner = kServer;
+        kUnknow,
+        kClient,
+        kServer
+    }m_owner = Owner::kUnknow;
 public:
-    Connection(Owner owner, asio::io_context& asioContext, asio::ip::tcp::socket socket, ThreadSafeDeque<OwnerMessage<MessageType>>& messageIn)
-        : m_owner(owner)
-        , m_ioContext(asioContext)
-        , m_writeStand(asioContext)
+    Connection(Owner owner, asio::io_context& ioContext, asio::ip::tcp::socket socket, ThreadSafeDeque<OwnerMessage<T>>& messageIn)
+        : m_ioContext(ioContext)
+        , m_writeStand(ioContext)
         , m_socket(std::move(socket))
         , m_messageIn(messageIn)
-    {}
+    {
+        m_owner = owner;
+    }
 
     virtual ~Connection()
     {
-
     }
 
     bool ConnectToServer(const asio::ip::tcp::resolver::results_type& endpoints)
     {
-        assert(m_owner == Owner::kClient);
-
+        assert(m_owner == Owner::kClient && "Client can't connect to server");
         asio::async_connect(m_socket, endpoints, 
             [this](std::error_code ec, asio::ip::tcp::endpoint endpoint)
             {
-                if (!ec) 
+                if (!ec)
                 {
+                    std::cout << "[Client] Connected!" << std::endl;
                     ReadHeader();
+                }
+                else 
+                {
+                    std::cout << "[Client] ConnectToServer Failed!" << std::endl;
                 }
             });
         return true;
@@ -53,7 +58,7 @@ public:
         return false;
     }
 
-    void DisConnect() 
+    void Disconnect() 
     {
         if (IsConnected())
         {
@@ -65,10 +70,10 @@ public:
     
     bool GetID() { return m_id; }
 
-    bool Send(Message<MessageType>&& msg) 
+    void Send(Message<T>&& msg) 
     {
         m_writeStand.post(
-            [this, msg = std::forward<Message<MessageType>>(msg)] {
+            [this, msg = std::forward<Message<T>>(msg)] {
                 m_messageOut.push_back(msg);
                 if (m_messageOut.size() <= 1)
                 {
@@ -80,7 +85,7 @@ public:
 private:
     void ReadHeader() 
     {
-        asio::async_read(m_socket, asio::buffer(&m_messageTemporaryIn.header,sizeof(MessageHeader<MessageType>)),
+        asio::async_read(m_socket, asio::buffer(&m_messageTemporaryIn.header,sizeof(MessageHeader<T>)),
             [this](std::error_code ec, std::size_t length)
             {
                 if (!ec)
@@ -124,7 +129,7 @@ private:
 
     void WriteHeader()
     {
-        asio::async_write(m_socket, asio::buffer(&m_messageOut.front().header, sizeof(MessageHeader<MessageType>)),
+        asio::async_write(m_socket, asio::buffer(&m_messageOut.front().header, sizeof(MessageHeader<T>)),
             m_writeStand.wrap([this](std::error_code ec, std::size_t length)
             {
                 if (!ec)
@@ -185,12 +190,11 @@ protected:
     asio::ip::tcp::socket m_socket;
     
 private:
-    std::deque<Message<MessageType>> m_messageOut;
-    ThreadSafeDeque<OwnerMessage<MessageType>>& m_messageIn;
+    std::deque<Message<T>> m_messageOut;
+    ThreadSafeDeque<OwnerMessage<T>>& m_messageIn;
     uint32_t m_id = 0;
 
-    
-    Message<MessageType> m_messageTemporaryIn;
+    Message<T> m_messageTemporaryIn;
 };
 
 

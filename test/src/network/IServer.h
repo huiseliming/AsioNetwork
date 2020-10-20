@@ -3,7 +3,7 @@
 
 
 
-template<typename MessageType>
+template<typename T>
 class IServer
 {
 public:
@@ -11,7 +11,7 @@ public:
 		: m_acceptor(m_ioContext,asio::ip::tcp::endpoint(asio::ip::tcp::v4(),port))
 		, m_connectionsStrand(m_ioContext)
 	{
-	
+
 	}
 
 	virtual ~IServer()
@@ -56,8 +56,8 @@ public:
 				{
 					auto remote_endpoint = socket.remote_endpoint();
 					std::cout << "[Server] New Connection: " << remote_endpoint << std::endl;
-					std::shared_ptr<Connection<MessageType>> newConnection =
-						std::make_shared<Connection<MessageType>>(Connection<MessageType>::Owner::kServer, m_ioContext, std::move(socket), m_messageIn);
+					std::shared_ptr<Connection<T>> newConnection =
+						std::make_shared<Connection<T>>(Connection<T>::Owner::kServer, m_ioContext, std::move(socket), m_messageIn);
 					if (OnClientConnect(newConnection))
 					{
 						m_connectionsStrand.post(
@@ -82,13 +82,13 @@ public:
 			});
 	}
 
-	void MessageClient(std::shared_ptr<Connection<MessageType>> client ,Message<MessageType> msg)
+	void MessageClient(std::shared_ptr<Connection<T>> client ,Message<T> msg)
 	{
 		m_connectionsStrand.post(
-			[this] {
+			[this, client, msg = std::move(msg)] () mutable {
 				if (client && client->IsConnected())
 				{
-					client->Send(msg);
+					client->Send(std::move(msg));
 				}
 				else
 				{
@@ -99,7 +99,7 @@ public:
 			});
 	}
 
-	void MessageAllClients(Message<MessageType> msg, std::shared_ptr<Connection<MessageType>> pIgnoreClient = nullptr)
+	void MessageAllClients(Message<T> msg, std::shared_ptr<Connection<T>> pIgnoreClient = nullptr)
 	{
 		m_connectionsStrand.post(
 			[this] {
@@ -137,21 +137,21 @@ public:
 	}
 
 protected:
-	virtual bool OnClientConnect(std::shared_ptr<Connection<MessageType>> client) 
+	virtual bool OnClientConnect(std::shared_ptr<Connection<T>> client) 
 	{
 		return true;
 	}
 
-	virtual void OnClientDisconnect(std::shared_ptr<Connection<MessageType>> client)
+	virtual void OnClientDisconnect(std::shared_ptr<Connection<T>> client)
 	{
 	}
 
-	virtual void OnMessage(std::shared_ptr<Connection<MessageType>> client, Message<MessageType> msg)
+	virtual void OnMessage(std::shared_ptr<Connection<T>> client, Message<T> msg)
 	{
 	}
 
-	TSQueue<OwnerMessage<MessageType>> m_messageIn;
-	std::deque<std::shared_ptr<Connection<MessageType>>> m_connections;
+	TSQueue<OwnerMessage<T>> m_messageIn;
+	std::deque<std::shared_ptr<Connection<T>>> m_connections;
 	asio::io_context m_ioContext;
 	asio::io_context::strand m_connectionsStrand;
 	std::vector<std::thread> m_threads;
